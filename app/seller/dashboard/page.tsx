@@ -1,273 +1,271 @@
 
 'use client'
 
-import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Edit, Trash2, ArrowLeft } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Plus, Edit, Trash2, Store, LogOut } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface Product {
   id: number
   name: string
   price: number
   description: string
-  stock: number
-  image: string
+  sellerId: string
 }
-
-const initialProducts: Product[] = [
-  {
-    id: 1,
-    name: "Laptop Gaming",
-    price: 15000000,
-    description: "Laptop gaming dengan spesifikasi tinggi",
-    stock: 5,
-    image: "https://via.placeholder.com/300x200"
-  },
-  {
-    id: 2,
-    name: "Smartphone Android",
-    price: 8000000,
-    description: "Smartphone dengan kamera terbaik di kelasnya",
-    stock: 10,
-    image: "https://via.placeholder.com/300x200"
-  }
-]
 
 export default function SellerDashboard() {
   const router = useRouter()
-  const [products, setProducts] = useState<Product[]>(initialProducts)
-  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [products, setProducts] = useState<Product[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [showAddForm, setShowAddForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-  const [formData, setFormData] = useState({
-    name: '',
-    price: '',
-    description: '',
-    stock: '',
-    image: 'https://via.placeholder.com/300x200'
-  })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('/api/products')
+      const data = await response.json()
+      setProducts(data.products || [])
+    } catch (error) {
+      console.error('Failed to fetch products:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleAddProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    
-    const productData = {
-      id: editingProduct ? editingProduct.id : Date.now(),
-      name: formData.name,
-      price: parseInt(formData.price),
-      description: formData.description,
-      stock: parseInt(formData.stock),
-      image: formData.image
-    }
+    const formData = new FormData(e.currentTarget)
+    const name = formData.get('name') as string
+    const price = formData.get('price') as string
+    const description = formData.get('description') as string
 
-    if (editingProduct) {
-      setProducts(products.map(p => p.id === editingProduct.id ? productData : p))
-    } else {
-      setProducts([...products, productData])
-    }
+    try {
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, price, description })
+      })
 
-    resetForm()
+      const data = await response.json()
+
+      if (data.success) {
+        await fetchProducts()
+        setShowAddForm(false)
+        alert('Product added successfully!')
+      } else {
+        alert('Failed to add product')
+      }
+    } catch (error) {
+      alert('Failed to add product')
+    }
   }
 
-  const handleEdit = (product: Product) => {
+  const handleEditProduct = (product: Product) => {
     setEditingProduct(product)
-    setFormData({
-      name: product.name,
-      price: product.price.toString(),
-      description: product.description,
-      stock: product.stock.toString(),
-      image: product.image
-    })
-    setIsFormOpen(true)
   }
 
-  const handleDelete = (id: number) => {
+  const handleUpdateProduct = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!editingProduct) return
+
+    const formData = new FormData(e.currentTarget)
+    const name = formData.get('name') as string
+    const price = formData.get('price') as string
+    const description = formData.get('description') as string
+
+    // Simulasi update - dalam implementasi nyata, kirim ke API
+    const updatedProducts = products.map(p => 
+      p.id === editingProduct.id 
+        ? { ...p, name, price: parseInt(price), description }
+        : p
+    )
+    setProducts(updatedProducts)
+    setEditingProduct(null)
+    alert('Product updated successfully!')
+  }
+
+  const handleDeleteProduct = (productId: number) => {
     if (confirm('Are you sure you want to delete this product?')) {
-      setProducts(products.filter(p => p.id !== id))
+      // Simulasi delete - dalam implementasi nyata, kirim ke API
+      const updatedProducts = products.filter(p => p.id !== productId)
+      setProducts(updatedProducts)
+      alert('Product deleted successfully!')
     }
   }
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      price: '',
-      description: '',
-      stock: '',
-      image: 'https://via.placeholder.com/300x200'
-    })
-    setEditingProduct(null)
-    setIsFormOpen(false)
-  }
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR'
-    }).format(price)
+  const handleLogout = () => {
+    router.push('/landing')
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => router.push('/landing')}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-              <h1 className="text-2xl font-bold text-gray-800">Seller Dashboard</h1>
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center">
+              <Store className="h-8 w-8 text-green-600 mr-3" />
+              <h1 className="text-3xl font-bold text-gray-900">Seller Dashboard</h1>
             </div>
-            <div className="flex items-center gap-4">
-              <Button 
-                onClick={() => setIsFormOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Product
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={() => router.push('/auth')}
-              >
-                Logout
-              </Button>
-            </div>
+            <Button onClick={handleLogout} variant="outline">
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Add/Edit Product Form */}
-        {isFormOpen && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>
-                {editingProduct ? 'Edit Product' : 'Add New Product'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Product Name</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Price (IDR)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      value={formData.price}
-                      onChange={(e) => setFormData({...formData, price: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="stock">Stock</Label>
-                    <Input
-                      id="stock"
-                      type="number"
-                      value={formData.stock}
-                      onChange={(e) => setFormData({...formData, stock: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="image">Image URL</Label>
-                    <Input
-                      id="image"
-                      value={formData.image}
-                      onChange={(e) => setFormData({...formData, image: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <textarea
-                    id="description"
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    rows={3}
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button type="submit">
-                    {editingProduct ? 'Update Product' : 'Add Product'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          <div className="mb-8 flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-gray-900">My Products</h2>
+            <Button onClick={() => setShowAddForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Product
+            </Button>
+          </div>
 
-        {/* Products List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map((product) => (
-            <Card key={product.id} className="overflow-hidden">
-              <div className="aspect-video bg-gray-200">
-                <img 
-                  src={product.image} 
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+          {showAddForm && (
+            <Card className="mb-6">
               <CardHeader>
-                <CardTitle className="text-lg">{product.name}</CardTitle>
-                <CardDescription>Stock: {product.stock} items</CardDescription>
+                <CardTitle>Add New Product</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-600 mb-4">{product.description}</p>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xl font-bold text-blue-600">
-                    {formatPrice(product.price)}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleEdit(product)}
-                  >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="destructive"
-                    onClick={() => handleDelete(product.id)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </div>
+                <form onSubmit={handleAddProduct} className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Product Name</Label>
+                    <Input id="name" name="name" required />
+                  </div>
+                  <div>
+                    <Label htmlFor="price">Price (Rp)</Label>
+                    <Input id="price" name="price" type="number" required />
+                  </div>
+                  <div>
+                    <Label htmlFor="description">Description</Label>
+                    <Input id="description" name="description" required />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit">Add Product</Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setShowAddForm(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
               </CardContent>
             </Card>
-          ))}
-        </div>
+          )}
 
-        {products.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No products yet. Add your first product to get started!</p>
-          </div>
-        )}
+          {editingProduct && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Edit Product</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleUpdateProduct} className="space-y-4">
+                  <div>
+                    <Label htmlFor="edit-name">Product Name</Label>
+                    <Input 
+                      id="edit-name" 
+                      name="name" 
+                      defaultValue={editingProduct.name}
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-price">Price (Rp)</Label>
+                    <Input 
+                      id="edit-price" 
+                      name="price" 
+                      type="number" 
+                      defaultValue={editingProduct.price}
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-description">Description</Label>
+                    <Input 
+                      id="edit-description" 
+                      name="description" 
+                      defaultValue={editingProduct.description}
+                      required 
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit">Update Product</Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setEditingProduct(null)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+
+          {isLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading products...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {products.map((product) => (
+                <Card key={product.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <CardTitle>{product.name}</CardTitle>
+                    <CardDescription>
+                      Rp {product.price.toLocaleString('id-ID')}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600 mb-4">{product.description}</p>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={() => handleEditProduct(product)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button 
+                        onClick={() => handleDeleteProduct(product.id)}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {!isLoading && products.length === 0 && (
+            <div className="text-center py-12">
+              <Store className="h-24 w-24 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-medium text-gray-900 mb-2">No products yet</h3>
+              <p className="text-gray-600">Add your first product to get started.</p>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   )

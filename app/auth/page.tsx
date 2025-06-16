@@ -1,56 +1,95 @@
 
 'use client'
 
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function AuthPage() {
   const router = useRouter()
-  const [loginData, setLoginData] = useState({ email: '', password: '' })
-  const [registerData, setRegisterData] = useState({ 
-    name: '', 
-    email: '', 
-    password: '', 
-    role: 'buyer' 
-  })
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Simulasi login - dalam implementasi nyata, akan memanggil API
-    console.log('Login:', loginData)
+    setIsLoading(true)
     
-    // Redirect berdasarkan role (simulasi)
-    if (loginData.email.includes('seller')) {
-      router.push('/seller/dashboard')
-    } else {
-      router.push('/buyer/dashboard')
+    const formData = new FormData(e.currentTarget)
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+    const userType = formData.get('userType') as string
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, userType })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        if (data.userType === 'seller') {
+          router.push('/seller/dashboard')
+        } else {
+          router.push('/buyer/dashboard')
+        }
+      } else {
+        alert(data.message)
+      }
+    } catch (error) {
+      alert('Login failed')
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Simulasi register - dalam implementasi nyata, akan memanggil API
-    console.log('Register:', registerData)
+    setIsLoading(true)
     
-    // Redirect berdasarkan role
-    if (registerData.role === 'seller') {
-      router.push('/seller/dashboard')
-    } else {
-      router.push('/buyer/dashboard')
+    const formData = new FormData(e.currentTarget)
+    const name = formData.get('name') as string
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+    const userType = formData.get('userType') as string
+
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, userType })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        if (data.userType === 'seller') {
+          router.push('/seller/dashboard')
+        } else {
+          router.push('/buyer/dashboard')
+        }
+      } else {
+        alert(data.message)
+      }
+    } catch (error) {
+      alert('Registration failed')
+    } finally {
+      setIsLoading(false)
     }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Welcome to Marketplace</CardTitle>
-          <CardDescription>Login to your account or create a new one</CardDescription>
+        <CardHeader>
+          <CardTitle className="text-2xl text-center">Welcome</CardTitle>
+          <CardDescription className="text-center">
+            Login or create an account to continue
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
@@ -65,10 +104,9 @@ export default function AuthPage() {
                   <Label htmlFor="login-email">Email</Label>
                   <Input
                     id="login-email"
+                    name="email"
                     type="email"
                     placeholder="Enter your email"
-                    value={loginData.email}
-                    onChange={(e) => setLoginData({...loginData, email: e.target.value})}
                     required
                   />
                 </div>
@@ -76,27 +114,39 @@ export default function AuthPage() {
                   <Label htmlFor="login-password">Password</Label>
                   <Input
                     id="login-password"
+                    name="password"
                     type="password"
                     placeholder="Enter your password"
-                    value={loginData.password}
-                    onChange={(e) => setLoginData({...loginData, password: e.target.value})}
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full">Login</Button>
+                <div className="space-y-2">
+                  <Label htmlFor="login-userType">User Type</Label>
+                  <select
+                    id="login-userType"
+                    name="userType"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    required
+                  >
+                    <option value="buyer">Buyer</option>
+                    <option value="seller">Seller</option>
+                  </select>
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? 'Logging in...' : 'Login'}
+                </Button>
               </form>
             </TabsContent>
             
             <TabsContent value="register">
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="register-name">Full Name</Label>
+                  <Label htmlFor="register-name">Name</Label>
                   <Input
                     id="register-name"
+                    name="name"
                     type="text"
-                    placeholder="Enter your full name"
-                    value={registerData.name}
-                    onChange={(e) => setRegisterData({...registerData, name: e.target.value})}
+                    placeholder="Enter your name"
                     required
                   />
                 </div>
@@ -104,10 +154,9 @@ export default function AuthPage() {
                   <Label htmlFor="register-email">Email</Label>
                   <Input
                     id="register-email"
+                    name="email"
                     type="email"
                     placeholder="Enter your email"
-                    value={registerData.email}
-                    onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
                     required
                   />
                 </div>
@@ -115,26 +164,27 @@ export default function AuthPage() {
                   <Label htmlFor="register-password">Password</Label>
                   <Input
                     id="register-password"
+                    name="password"
                     type="password"
-                    placeholder="Create a password"
-                    value={registerData.password}
-                    onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
+                    placeholder="Enter your password"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="register-role">Account Type</Label>
+                  <Label htmlFor="register-userType">User Type</Label>
                   <select
-                    id="register-role"
+                    id="register-userType"
+                    name="userType"
                     className="w-full p-2 border border-gray-300 rounded-md"
-                    value={registerData.role}
-                    onChange={(e) => setRegisterData({...registerData, role: e.target.value})}
+                    required
                   >
                     <option value="buyer">Buyer</option>
                     <option value="seller">Seller</option>
                   </select>
                 </div>
-                <Button type="submit" className="w-full">Register</Button>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? 'Registering...' : 'Register'}
+                </Button>
               </form>
             </TabsContent>
           </Tabs>
