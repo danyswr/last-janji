@@ -2,7 +2,7 @@
 'use client'
 
 import React from 'react'
-import { Link } from 'wouter'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ShoppingBag, Users, TrendingUp } from 'lucide-react'
